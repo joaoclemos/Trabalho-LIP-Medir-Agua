@@ -10,8 +10,8 @@ void setup() {
   Serial.begin(9600);
   Timer1.initialize();
   MFS.initialize(&Timer1);
-  pinMode(5, OUTPUT); // Echo
-  pinMode(6, OUTPUT); // Trigger
+  pinMode(5, OUTPUT);
+  pinMode(6, OUTPUT);
 }
 
 long readUltrasonicDistance(int triggerPin, int echoPin) {

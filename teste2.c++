@@ -31,7 +31,7 @@ float X=0;
 Serial.println(X); 
 X=(dist); 
 if(X<=100) 
-return X; 
+return 100 - X; 
 }
 
 

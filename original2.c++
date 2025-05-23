@@ -9,8 +9,8 @@ void setup() {
   Serial.begin(9600);
   Timer1.initialize();
   MFS.initialize(&Timer1);
-  pinMode(5, OUTPUT); // Echo pin
-  pinMode(6, OUTPUT); // Trigger pin
+  pinMode(5, OUTPUT);
+  pinMode(6, OUTPUT);
 }
 
 long readUltrasonicDistance(int triggerPin, int echoPin) {
@@ -29,7 +29,7 @@ float CalcularPorcent() {
   if (dist <= 100) {
     return dist;
   }
-  return 0; // Return 0 if distance exceeds 100 cm
+  return 0;
 }
 
 int Potenciometro() {
