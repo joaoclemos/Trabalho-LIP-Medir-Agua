@@ -1,14 +1,14 @@
 #include <TimerOne.h>                   
 #include <Wire.h>                         
 #include <MultiFuncShield.h> 
-float dist = 0; 
-bool estadoBotao = false; 
+float dist; 
+bool stateBotao = false; 
 void setup() 
 { 
 Serial.begin(9600); 
 Timer1.initialize();                    
 MFS.initialize(&Timer1);                
-estadoBotao = false; 
+stateBotao = false; 
 pinMode(5, OUTPUT); 
 pinMode(6, OUTPUT); 
 } 
@@ -19,20 +19,20 @@ byte buttonNumber = btn & B00111111;
 byte buttonAction = btn & B11000000; 
 if(buttonAction == BUTTON_LONG_RELEASE_IND && buttonNumber == 1) { 
 Serial.println("toggle sistema"); 
-if(estadoBotao) 
-estadoBotao = false; 
+if(stateBotao) 
+stateBotao = false; 
 else 
-estadoBotao = true; 
+stateBotao = true; 
 }//se o botao estiver ativado vai rodar isso 
-if(estadoBotao) { 
+if(stateBotao) { 
 //chamando a funcao do potenciometro 
-int resultado=Potenciometro(); 
+int result=Potenciometro(); 
 //calc porcent 
 float X=CalcularPorcent(); 
 Serial.println(X); 
 MFS.write(X, 1); 
 //se for menor que o potenciometro/25 
-if(X<resultado) { 
+if(X<result) { 
 MFS.writeLeds(LED_1 | LED_2 | LED_3 | LED_4, ON); 
 MFS.beep(); 
 //se for menor que 50 e maior que 25 
@@ -80,8 +80,8 @@ int Potenciometro()
 { 
 //potenciometro 
 int x=analogRead(POT_PIN); 
-int resultado = map(x,0,1023,0,25); 
-MFS.write(resultado);        
+int result = map(x,0,1023,0,25); 
+MFS.write(result);        
 delay(100);  
-return resultado; 
+return result; 
 } 

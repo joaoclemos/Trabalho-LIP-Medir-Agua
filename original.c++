@@ -2,21 +2,17 @@
 #include <Wire.h>
 #include <MultiFuncShield.h>
 
+float dist;
+bool stateBotao = false;
+bool ultimoEstadoBotao = false;
+
 void setup() {
   Serial.begin(9600);
   Timer1.initialize();
   MFS.initialize(&Timer1);
+  pinMode(5, OUTPUT); // Echo
+  pinMode(6, OUTPUT); // Trigger
 }
-
-int dist = 0;
-float porcent = 0;
-bool ativo = false;
-bool ultimoEstadoBotao = false;
-bool alertaButton = false;
-int potenciometro;
-int num1, num2, num3, num4;
-int potenciometroCorte;
-
 
 long readUltrasonicDistance(int triggerPin, int echoPin) {
   pinMode(triggerPin, OUTPUT);
@@ -29,67 +25,63 @@ long readUltrasonicDistance(int triggerPin, int echoPin) {
   return pulseIn(echoPin, HIGH);
 }
 
-void Buzzer() {
-  MFS.beep();
-  delay(1000);
-  MFS.beep(5, 5, 4, 3, 50);
+float CalcularPorcent() {
+  dist = 0.01723 * readUltrasonicDistance(6, 5);
+  float porcent = 100 - dist;
+  if (porcent < 0) {
+    porcent = 0;
+  }
+  return porcent;
+}
+
+int Potenciometro() {
+  int x = analogRead(POT_PIN);
+  int result = map(x, 0, 1023, 0, 25);
+  return result;
 }
 
 void loop() {
   byte btn = MFS.getButton();
-  potenciometro = analogRead(POT_PIN);
-  potenciometroCorte = map(potenciometro, 0, 1023, 0, 255);
+  byte buttonNumber = btn & B00111111;
+  byte buttonAction = btn & B11000000;
 
-  if (btn == BUTTON_1_PRESSED && !ultimoEstadoBotao) 
-  {
-    ativo = !ativo;
-    MFS.writeLeds(LED_4, ativo ? ON : OFF);
+  if (buttonAction == BUTTON_LONG_RELEASE_IND && buttonNumber == 1) {
+    stateBotao = !stateBotao;
+    ultimoEstadoBotao = true;
+  } else if (buttonAction == BUTTON_RELEASED_IND) {
+    ultimoEstadoBotao = false;
   }
 
-  if (btn == BUTTON_1_PRESSED && !alertaButton) 
-        {
-          ativo = !ativo;
-          MFS.beep(0, 0, 0, 0, 0);        
-        }
+  if (stateBotao) {
+    int result = Potenciometro();
+    float X = CalcularPorcent();
+    Serial.println(X);
+    MFS.write(X, 1);
 
-   
-
-  num1 = 10000 /potenciometroCorte;
-  num2 = 7500 /potenciometroCorte;
-  num3 = 5000 /potenciometroCorte;
-  num4 = 2500 /potenciometroCorte;
-
-  ultimoEstadoBotao = (btn == BUTTON_1_PRESSED);
-  alertaButton = (btn == BUTTON_1_PRESSED);
-
-  if (ativo) {
-    dist = 0.01723 * readUltrasonicDistance(6, 5);
-    porcent =  100 - dist;
-    if (porcent < 0){
-      porcent = 0;
-    }
+    int num1 = 10000 / result;
+    int num2 = 7500 / result;
+    int num3 = 5000 / result;
+    int num4 = 2500 / result;
 
     if (dist <= num1) {
-      Serial.println(dist);
-      // MFS.write(dist);
-      MFS.write(porcent);
-      delay(200);
-
       if (dist >= num2) {
-        MFS.writeLeds(LED_1 | LED_2 | LED_3, OFF);
+        MFS.writeLeds(LED_1 | LED_2 | LED_3 | LED_4, OFF);
       } else if (dist >= num3) {
         MFS.writeLeds(LED_1, ON);
+        MFS.writeLeds(LED_2 | LED_3 | LED_4, OFF);
       } else if (dist >= num4) {
         MFS.writeLeds(LED_1 | LED_2, ON);
+        MFS.writeLeds(LED_3 | LED_4, OFF);
       } else {
-        MFS.writeLeds(LED_1 | LED_2 | LED_3, ON);
-        Buzzer();
-
+        MFS.writeLeds(LED_1 | LED_2 | LED_3 | LED_4, ON);
+        MFS.beep();
       }
     } else {
-      MFS.writeLeds(LED_1 | LED_2 | LED_3, OFF);
+      MFS.writeLeds(LED_1 | LED_2 | LED_3 | LED_4, OFF);
     }
   } else {
-    MFS.writeLeds(LED_1 | LED_2 | LED_3, OFF);
+    MFS.writeLeds(LED_ALL, OFF);
+    MFS.write("");
   }
+  delay(200);
 }
