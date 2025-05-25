@@ -1,95 +1,81 @@
-#include <TimerOne.h>
-#include <Wire.h>
-#include <MultiFuncShield.h>
-
-void setup() {
-  Serial.begin(9600);
-  Timer1.initialize();
-  MFS.initialize(&Timer1);
-}
-
-int dist = 0;
-float porcent = 0;
-bool ativo = false;
-bool ultimoEstadoBotao = false;
-bool alertaButton = false;
-int potenciometro;
-int num1, num2, num3, num4;
-int potenciometroCorte;
-
-
-long readUltrasonicDistance(int triggerPin, int echoPin) {
-  pinMode(triggerPin, OUTPUT);
-  digitalWrite(triggerPin, LOW);
-  delayMicroseconds(2);
-  digitalWrite(triggerPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(triggerPin, LOW);
-  pinMode(echoPin, INPUT);
-  return pulseIn(echoPin, HIGH);
-}
-
-void Buzzer() {
-  MFS.beep();
-  delay(1000);
-  MFS.beep(5, 5, 4, 3, 50);
-}
-
-void loop() {
-  byte btn = MFS.getButton();
-  potenciometro = analogRead(POT_PIN);
-  potenciometroCorte = map(potenciometro, 0, 1023, 0, 255);
-
-  if (btn == BUTTON_1_PRESSED && !ultimoEstadoBotao) 
-  {
-    ativo = !ativo;
-    MFS.writeLeds(LED_4, ativo ? ON : OFF);
-  }
-
-  if (btn == BUTTON_1_PRESSED && !alertaButton) 
-        {
-          ativo = !ativo;
-          MFS.beep(0, 0, 0, 0, 0);        
-        }
-
-   
-
-  num1 = 10000 /potenciometroCorte;
-  num2 = 7500 /potenciometroCorte;
-  num3 = 5000 /potenciometroCorte;
-  num4 = 2500 /potenciometroCorte;
-
-  ultimoEstadoBotao = (btn == BUTTON_1_PRESSED);
-  alertaButton = (btn == BUTTON_1_PRESSED);
-
-  if (ativo) {
-    dist = 0.01723 * readUltrasonicDistance(6, 5);
-    porcent =  100 - dist;
-    if (porcent < 0){
-      porcent = 0;
-    }
-
-    if (dist <= num1) {
-      Serial.println(dist);
-      // MFS.write(dist);
-      MFS.write(porcent);
-      delay(200);
-
-      if (dist >= num2) {
-        MFS.writeLeds(LED_1 | LED_2 | LED_3, OFF);
-      } else if (dist >= num3) {
-        MFS.writeLeds(LED_1, ON);
-      } else if (dist >= num4) {
-        MFS.writeLeds(LED_1 | LED_2, ON);
-      } else {
-        MFS.writeLeds(LED_1 | LED_2 | LED_3, ON);
-        Buzzer();
-
-      }
-    } else {
-      MFS.writeLeds(LED_1 | LED_2 | LED_3, OFF);
-    }
-  } else {
-    MFS.writeLeds(LED_1 | LED_2 | LED_3, OFF);
-  }
+#include <TimerOne.h> 
+#include <Wire.h> 
+#include <MultiFuncShield.h> 
+float distancia;           
+// distância medida pelo sensor 
+bool estadoBotao = false;  // estado do botão liga/desliga 
+// Setup inicial, roda só uma vez pra configurar o serial, timer, 
+escudo e pinos 
+void setup() { 
+Serial.begin(9600); 
+Timer1.initialize(); 
+MFS.initialize(&Timer1); 
+estadoBotao = false; 
+pinMode(5, OUTPUT); 
+pinMode(6, OUTPUT); 
+} 
+// Função que mede a distância usando sensor ultrassom 
+float medirDistancia(int trigger, int echo) { 
+pinMode(trigger, OUTPUT); 
+digitalWrite(trigger, LOW); 
+delay(2); 
+digitalWrite(trigger, HIGH); 
+delay(10); 
+digitalWrite(trigger, LOW); 
+pinMode(echo, INPUT); 
+return pulseIn(echo, HIGH); 
+} 
+// Calcula a porcentagem de água no tanque (altura total 100cm menos a 
+distância medida) 
+float calcularPorcentagem() { 
+distancia = 0.01723 * medirDistancia(6, 5); 
+float porcentagem = 100 - distancia; 
+if (porcentagem < 0) porcentagem = 0; 
+if (porcentagem > 100) porcentagem = 100; 
+return porcentagem; 
+} 
+// Lê o potenciômetro, mapeia valor para 0-25, escreve no display e 
+retorna o valor 
+int Potenciometro() { 
+int x = analogRead(POT_PIN); 
+int resultado = map(x, 0, 1023, 0, 25); 
+delay(100); 
+return resultado; 
+} 
+// Loop principal que lê botão, alterna sistema e controla leds/beeps 
+conforme nível do tanque 
+void loop() { 
+byte botao = MFS.getButton(); 
+byte numeroBotao = botao & B00111111; 
+byte acaoBotao = botao & B11000000; 
+// Se o botão 1 foi pressionado longo e solto, liga/desliga o sistema 
+if (acaoBotao == BUTTON_LONG_RELEASE_IND && numeroBotao == 1) { 
+Serial.println("toggle sistema"); 
+estadoBotao = !estadoBotao; 
+} 
+if (estadoBotao) { 
+int valorPotenciometro = Potenciometro(); 
+float porcentagem = calcularPorcentagem(); 
+Serial.println(valorPotenciometro); 
+MFS.write(porcentagem, 1); 
+// Acende leds e faz beep dependendo do nível de água comparado ao 
+potenciômetro 
+if (porcentagem < valorPotenciometro) { 
+MFS.writeLeds(LED_1 | LED_2 | LED_3 | LED_4, ON); 
+MFS.beep(); 
+} else if (porcentagem <= 50) { 
+MFS.writeLeds(LED_1 | LED_2, ON); 
+MFS.writeLeds(LED_3 | LED_4, OFF); 
+} else if (porcentagem <= 75) { 
+MFS.writeLeds(LED_1, ON); 
+MFS.writeLeds(LED_4 | LED_3 | LED_2, OFF); 
+} else { 
+MFS.writeLeds(LED_1 | LED_2 | LED_3 | LED_4, OFF); 
+} 
+} else { 
+// Sistema desligado: apaga tudo 
+MFS.writeLeds(LED_ALL, OFF); 
+MFS.write(""); 
+} 
+delay(200); 
 }
